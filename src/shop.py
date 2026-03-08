@@ -1,50 +1,59 @@
 import sys
 from storage import load_list, save_list
+from utils import calc_line_total, calc_grand_total, count_units
 
 def main():
-    # Ielādējam esošos datus
-    items = load_list()
-    
-    # Pārbaudām, vai ir ievadīta komanda
-    if len(sys.argv) < 2:
-        print("Lietošana: python shop.py [add/list/total/clear]")
+    args = sys.argv[1:]
+    if not args:
+        print("Komandas: add <nosaukums> <daudzums> <cena>, list, total, clear")
         return
 
-    command = sys.argv[1].lower()
+    command = args[0].lower()
+    shopping_list = load_list()
 
     if command == "add":
-        if len(sys.argv) < 4:
-            print("Kļūda: Norādi nosaukumu un cenu! (piem. add Maize 1.20)")
+        # Pārbaude: vai ir pietiekami daudz argumentu?
+        if len(args) < 4:
+            print("Kļūda: Jānorāda nosaukums, daudzums un cena (piem., add Maize 3 1.20)")
             return
         
-        name = sys.argv[2]
+        name = args[1]
         try:
-            price = float(sys.argv[3])
-            new_item = {"name": name, "price": price}
-            items.append(new_item)
-            save_list(items)
-            print(f"✓ Pievienots: {name} ({price:.2f} EUR)")
+            qty = int(args[2])
+            price = float(args[3].replace(',', '.'))
+            
+            if qty <= 0 or price < 0:
+                print("Kļūda: Daudzumam un cenai jābūt pozitīviem skaitļiem!")
+                return
+
+            new_item = {"name": name, "qty": qty, "price": price}
+            shopping_list.append(new_item)
+            save_list(shopping_list)
+            
+            line_total = calc_line_total(new_item)
+            print(f"✓ Pievienots: {name} × {qty} ({price:.2f} EUR/gab.)")
+            print(f"= {line_total:.2f} EUR")
+            
         except ValueError:
-            print("Kļūda: Cenai jābūt skaitlim!")
+            print("Kļūda: Daudzumam jābūt veselam skaitlim, cenai – skaitlim!")
 
     elif command == "list":
-        if not items:
+        if not shopping_list:
             print("Saraksts ir tukšs.")
         else:
             print("Iepirkumu saraksts:")
-            for idx, item in enumerate(items, 1):
-                print(f" {idx}. {item['name']} — {item['price']:.2f} EUR")
+            for i, item in enumerate(shopping_list, 1):
+                line_total = calc_line_total(item)
+                print(f" {i}. {item['name']} × {item['qty']} — {item['price']:.2f} EUR/gab. — {line_total:.2f} EUR")
 
     elif command == "total":
-        total_sum = sum(item['price'] for item in items)
-        print(f"Kopā: {total_sum:.2f} EUR ({len(items)} produkti)")
+        total_price = calc_grand_total(shopping_list)
+        total_units = count_units(shopping_list)
+        print(f"Kopā: {total_price:.2f} EUR ({total_units} vienības, {len(shopping_list)} produkti)")
 
     elif command == "clear":
         save_list([])
-        print("✓ Saraksts notīrīts.")
-    
-    else:
-        print(f"Nezināma komanda: {command}")
+        print("✓ Saraksts ir notīrīts.")
 
 if __name__ == "__main__":
     main()
